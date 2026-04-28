@@ -1,0 +1,34 @@
+{
+  "name": "gta-threejs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "npm --prefix server run dev",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "screenshot": "node scripts/screenshot.mjs debug/latest.png 3000",
+    "perf:report": "node scripts/perf-report.mjs",
+    "screenshot:landmarks": "node scripts/screenshot-landmarks.mjs",
+    "screenshot:spawn-bots": "node scripts/screenshot-spawn-bots.mjs",
+    "screenshot:fp-weapons": "node scripts/screenshot-fp-weapons.mjs",
+    "screenshot:arrest": "node scripts/screenshot-arrest-mission.mjs",
+    "test:arrest": "node scripts/test-fugitive-arrest.mjs"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.12.0",
+    "@solana/web3.js": "^1.98.4",
+    "buffer": "^6.0.3",
+    "colyseus.js": "^0.16.22",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.169.0",
+    "puppeteer": "^24.0.0",
+    "stats.js": "^0.17.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
+  }
+}
