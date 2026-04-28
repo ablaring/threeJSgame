@@ -1,0 +1,20 @@
+{
+  "name": "AK47",
+  "symbol": "ARSENAL",
+  "description": "Auto-rifle for in-game use. Owning this NFT unlocks the AK47 weapon in the game.",
+  "image": "__BASE_URL__/ak47.png",
+  "external_url": "__BASE_URL__",
+  "attributes": [
+    { "trait_type": "Class", "value": "Auto-rifle" },
+    { "trait_type": "Damage", "value": 25 },
+    { "trait_type": "Rate of fire", "value": "600 rpm" },
+    { "trait_type": "Range", "value": "100 m" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      { "uri": "__BASE_URL__/ak47.png", "type": "image/png" }
+    ],
+    "creators": []
+  }
+}

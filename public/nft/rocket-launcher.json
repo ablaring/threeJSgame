@@ -1,0 +1,20 @@
+{
+  "name": "Rocket Launcher",
+  "symbol": "ARSENAL",
+  "description": "Heavy splash weapon for in-game use. Owning this NFT unlocks the Rocket Launcher in the game.",
+  "image": "__BASE_URL__/rocket-launcher.png",
+  "external_url": "__BASE_URL__",
+  "attributes": [
+    { "trait_type": "Class", "value": "Splash launcher" },
+    { "trait_type": "Max damage", "value": 90 },
+    { "trait_type": "Splash radius", "value": "6 m" },
+    { "trait_type": "Range", "value": "85 m" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      { "uri": "__BASE_URL__/rocket-launcher.png", "type": "image/png" }
+    ],
+    "creators": []
+  }
+}
