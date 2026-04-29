@@ -352,6 +352,23 @@ export class Player {
     return false;
   }
 
+  /** Revoke ownership (e.g. NFT transferred or burned). Switches back to pistol if needed. */
+  lockWeapon(weapon: WeaponId): boolean {
+    let locked = false;
+    if (weapon === WEAPON_AK47 && this.hasAk47) {
+      this.hasAk47 = false;
+      locked = true;
+    } else if (weapon === WEAPON_ROCKET_LAUNCHER && this.hasRocketLauncher) {
+      this.hasRocketLauncher = false;
+      locked = true;
+    }
+    if (locked) {
+      if (this.activeWeapon === weapon) this.setWeapon(WEAPON_PISTOL);
+      this.onWeaponUnlocked?.(weapon); // reuse to refresh HUD
+    }
+    return locked;
+  }
+
   setWeapon(weapon: WeaponId): boolean {
     if (!this.ownsWeapon(weapon)) return false;
     if (this.activeWeapon === weapon) return true;

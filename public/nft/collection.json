@@ -1,0 +1,14 @@
+{
+  "name": "Arsenal",
+  "symbol": "ARSENAL",
+  "description": "In-game weapon collection. Each NFT in this collection unlocks a usable weapon for the holder in the game.",
+  "image": "https://raw.githubusercontent.com/ablaring/threeJSgame/main/public/nft/collection.png",
+  "external_url": "https://raw.githubusercontent.com/ablaring/threeJSgame/main/public/nft",
+  "properties": {
+    "category": "image",
+    "files": [
+      { "uri": "https://raw.githubusercontent.com/ablaring/threeJSgame/main/public/nft/collection.png", "type": "image/png" }
+    ],
+    "creators": []
+  }
+}

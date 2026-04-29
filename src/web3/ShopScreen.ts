@@ -1,11 +1,12 @@
 import { Inventory } from './Inventory';
-import { SolanaPaymentService } from './SolanaPayments';
 import { ShopItem, SHOP_ITEMS } from './ShopCatalog';
+import type { WeaponNftService } from './WeaponNftService';
 
 /**
- * Modal weapons shop. Toggled with the B key. Phase 2 = mock purchases
- * persisted in localStorage; Phase 3 will replace `Inventory.purchase()` with
- * a Solana payment + server-backed receipt.
+ * Modal weapons shop. Toggled with the B key.
+ *
+ * On Buy → asks the server for a partial-signed mint tx, has Phantom add the
+ * buyer signature, submits to Solana, then refreshes the on-chain inventory.
  */
 export class ShopScreen {
   private root: HTMLDivElement;
@@ -20,7 +21,7 @@ export class ShopScreen {
 
   constructor(
     private inventory: Inventory,
-    private payments?: SolanaPaymentService
+    private nft?: WeaponNftService,
   ) {
     this.root = document.createElement('div');
     this.root.id = 'shop-screen';
@@ -158,30 +159,22 @@ export class ShopScreen {
   private async handleBuy(item: ShopItem) {
     if (this.inventory.owns(item.id)) return;
     if (this.busyItemId) return;
+    if (!this.nft?.isEnabled()) {
+      this.showToast('NFT minting is not configured', 'error');
+      return;
+    }
 
     this.busyItemId = item.id;
     this.refresh();
 
     try {
-      let receiptUrl: string | null = null;
-      if (this.payments?.isEnabled()) {
-        const receipt = await this.payments.buyShopItem(item);
-        receiptUrl = receipt.explorerUrl;
-      }
-
-      const ok = this.inventory.purchase(item.id);
-      if (ok) {
-        this.showToast(
-          this.payments?.isEnabled()
-            ? `✓ ${item.name} purchased on Solana`
-            : `✓ ${item.name} acquired in local dev mode`,
-          'success',
-          receiptUrl
-        );
-        this.onPurchased?.(item.id);
-      }
+      const receipt = await this.nft.mint(item.id);
+      // Re-scan the chain so the inventory reflects the new NFT.
+      await this.inventory.refresh();
+      this.showToast(`✓ ${item.name} NFT minted`, 'success', receipt.explorerUrl);
+      this.onPurchased?.(item.id);
     } catch (err) {
-      this.showToast((err as Error).message || 'Purchase failed', 'error');
+      this.showToast((err as Error).message || 'Mint failed', 'error');
     } finally {
       this.busyItemId = null;
       this.refresh();
@@ -190,10 +183,10 @@ export class ShopScreen {
 
   /** Refresh button states (called when inventory changes). */
   private refresh() {
-    const solanaEnabled = this.payments?.isEnabled() ?? false;
-    this.subtitle.textContent = solanaEnabled
-      ? `Phantom will ask you to confirm each Solana payment on ${this.payments?.getNetworkLabel()}.`
-      : 'Local dev mode: set VITE_SHOP_TREASURY_ADDRESS to enable real Solana payments.';
+    const enabled = this.nft?.isEnabled() ?? false;
+    this.subtitle.textContent = enabled
+      ? `Phantom will ask you to confirm one Solana transaction (pay + mint NFT) on ${this.nft?.getNetworkLabel()}.`
+      : 'NFT minting is not configured. Run setup:collection on the server and set VITE_COLLECTION_MINT.';
 
     for (const item of SHOP_ITEMS) {
       const row = this.itemRows.get(item.id);
@@ -204,14 +197,13 @@ export class ShopScreen {
       row.btn.textContent =
         owned ? 'Owned' :
         busy ? 'Confirming...' :
-        solanaEnabled ? 'Pay' :
-        'Buy';
+        enabled ? 'Buy + Mint' :
+        'Unavailable';
       row.btn.style.filter = owned ? 'grayscale(0.6) opacity(0.65)' : 'none';
       row.btn.style.cursor = owned || this.busyItemId !== null ? 'default' : 'pointer';
       row.status.textContent =
-        owned ? '● Owned' :
-        busy && solanaEnabled ? 'Confirm in Phantom' :
-        busy ? 'Processing' :
+        owned ? '● Owned (NFT)' :
+        busy ? 'Confirm in Phantom' :
         '';
     }
   }

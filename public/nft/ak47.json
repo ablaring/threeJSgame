@@ -2,8 +2,8 @@
   "name": "AK47",
   "symbol": "ARSENAL",
   "description": "Auto-rifle for in-game use. Owning this NFT unlocks the AK47 weapon in the game.",
-  "image": "__BASE_URL__/ak47.png",
-  "external_url": "__BASE_URL__",
+  "image": "https://raw.githubusercontent.com/ablaring/threeJSgame/main/public/nft/ak47.png",
+  "external_url": "https://raw.githubusercontent.com/ablaring/threeJSgame/main/public/nft",
   "attributes": [
     { "trait_type": "Class", "value": "Auto-rifle" },
     { "trait_type": "Damage", "value": 25 },
@@ -13,7 +13,7 @@
   "properties": {
     "category": "image",
     "files": [
-      { "uri": "__BASE_URL__/ak47.png", "type": "image/png" }
+      { "uri": "https://raw.githubusercontent.com/ablaring/threeJSgame/main/public/nft/ak47.png", "type": "image/png" }
     ],
     "creators": []
   }

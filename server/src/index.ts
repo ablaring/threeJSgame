@@ -1,19 +1,25 @@
+import 'dotenv/config';
 import { Server } from '@colyseus/core';
 import { RedisDriver } from '@colyseus/redis-driver';
 import { RedisPresence } from '@colyseus/redis-presence';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { createServer } from 'node:http';
 import { GameRoom } from './GameRoom';
+import { handleShopRoute } from './http/shopRoutes';
 
 const port = Number(process.env.PORT ?? 2567);
 const redisUrl = process.env.REDIS_URL;
 const publicAddress = process.env.PUBLIC_ADDRESS;
 
-const httpServer = createServer((req, res) => {
+const httpServer = createServer(async (req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, ts: Date.now() }));
     return;
+  }
+  if (req.url?.startsWith('/shop/')) {
+    const handled = await handleShopRoute(req, res);
+    if (handled) return;
   }
   res.writeHead(200, { 'content-type': 'text/plain' });
   res.end('GTA-threejs Colyseus server\n');

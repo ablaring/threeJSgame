@@ -27,8 +27,8 @@ import { AudioManager } from './audio/AudioManager';
 import { WalletManager, shortAddress } from './web3/WalletManager';
 import { ConnectScreen } from './web3/ConnectScreen';
 import { Inventory } from './web3/Inventory';
-import { SolanaPaymentService } from './web3/SolanaPayments';
 import { ShopScreen } from './web3/ShopScreen';
+import { WeaponNftService } from './web3/WeaponNftService';
 
 async function main() {
   // --- Wallet gate (Phantom required to play) ---
@@ -87,9 +87,11 @@ async function main() {
   ];
 
   // --- Inventory + Shop ---
-  const inventory = new Inventory(walletPubkey);
-  const payments = new SolanaPaymentService(wallet);
-  const shop = new ShopScreen(inventory, payments);
+  // The NFT service is the source of truth for ownership. The Inventory just
+  // caches the result of the chain scan and notifies listeners on change.
+  const nftService = new WeaponNftService(wallet);
+  const inventory = new Inventory(nftService);
+  const shop = new ShopScreen(inventory, nftService);
 
   // Map inventory item IDs (string) → in-game weapon IDs (number).
   const ITEM_TO_WEAPON: Record<string, WeaponId> = {
@@ -147,18 +149,32 @@ async function main() {
   // Hook player audio events
   player.onJump = () => audio.playJump();
 
-  // Restore previously-purchased weapons from inventory and keep HUD in sync.
-  for (const itemId of inventory.list()) {
-    const weaponId = ITEM_TO_WEAPON[itemId];
-    if (weaponId !== undefined) player.unlockWeapon(weaponId);
+  // Sync player weapons with the on-chain inventory whenever it changes.
+  // Because ownership lives on the chain we never grant a weapon locally
+  // unless the wallet actually holds the corresponding NFT.
+  function syncPlayerFromInventory() {
+    for (const itemId of Object.keys(ITEM_TO_WEAPON)) {
+      const weaponId = ITEM_TO_WEAPON[itemId];
+      if (inventory.owns(itemId)) {
+        player.unlockWeapon(weaponId);
+      } else {
+        player.lockWeapon(weaponId);
+      }
+    }
   }
+  inventory.onChange(syncPlayerFromInventory);
   player.onWeaponChanged = () => refreshInventoryHud();
   player.onWeaponUnlocked = () => refreshInventoryHud();
-  shop.onPurchased = (itemId) => {
-    const weaponId = ITEM_TO_WEAPON[itemId];
-    if (weaponId !== undefined) player.unlockWeapon(weaponId);
+  shop.onPurchased = () => {
+    // The actual unlock happens via inventory.onChange after the chain scan
+    // confirms the NFT shows up; the shop already triggered inventory.refresh.
   };
   refreshInventoryHud();
+
+  // Kick off a background scan so the chain becomes the source of truth.
+  inventory.refresh().catch((err) => {
+    console.warn('[inventory] initial chain scan failed:', err);
+  });
 
   // --- Networking ---
   const serverUrl = (import.meta.env.VITE_SERVER_URL as string | undefined) ?? 'ws://localhost:2567';

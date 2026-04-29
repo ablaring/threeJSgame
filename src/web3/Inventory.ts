@@ -1,19 +1,21 @@
 /**
- * Per-wallet inventory of owned shop items. Persisted in localStorage today,
- * will move behind a network call (and ultimately on-chain NFT ownership) in
- * later phases. The public API is intentionally identical to the future
- * server-backed version so call sites don't change.
+ * Per-wallet inventory of owned shop items.
+ *
+ * Source of truth = on-chain Solana NFT ownership. At boot and after every
+ * mint we scan the connected wallet for NFTs that belong to our verified
+ * collection. Anything not on-chain is not owned — there is no localStorage
+ * fallback because that path was used to pretend ownership in earlier dev
+ * builds, which is exactly what we don't want anymore.
  */
 
-const STORAGE_PREFIX = 'inventory:';
+import type { WeaponNftService } from './WeaponNftService';
 
 export class Inventory {
-  private items: Set<string>;
+  private items: Set<string> = new Set();
   private listeners: Array<() => void> = [];
+  private isRefreshing = false;
 
-  constructor(private walletPubkey: string) {
-    this.items = new Set(this.readFromStorage());
-  }
+  constructor(private nftService: WeaponNftService | null = null) {}
 
   list(): string[] {
     return Array.from(this.items);
@@ -23,39 +25,37 @@ export class Inventory {
     return this.items.has(itemId);
   }
 
-  /** Mock purchase (Phase 2). Phase 3 will hit the server after a Solana tx. */
-  purchase(itemId: string): boolean {
-    if (this.items.has(itemId)) return false;
-    this.items.add(itemId);
-    this.writeToStorage();
-    for (const cb of this.listeners) cb();
-    return true;
+  /**
+   * Re-scan the connected wallet for collection NFTs and update the inventory
+   * from the chain. Call after a successful mint, and once at boot.
+   */
+  async refresh(): Promise<void> {
+    if (this.isRefreshing) return;
+    this.isRefreshing = true;
+    try {
+      if (!this.nftService?.isEnabled()) {
+        if (this.items.size > 0) {
+          this.items = new Set();
+          this.notify();
+        }
+        return;
+      }
+      const next = await this.nftService.fetchOwnedItems();
+      const same = next.size === this.items.size && [...next].every((x) => this.items.has(x));
+      if (!same) {
+        this.items = next;
+        this.notify();
+      }
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   onChange(cb: () => void) {
     this.listeners.push(cb);
   }
 
-  private storageKey(): string {
-    return `${STORAGE_PREFIX}${this.walletPubkey}`;
-  }
-
-  private readFromStorage(): string[] {
-    try {
-      const raw = localStorage.getItem(this.storageKey());
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-    } catch {
-      return [];
-    }
-  }
-
-  private writeToStorage() {
-    try {
-      localStorage.setItem(this.storageKey(), JSON.stringify(this.list()));
-    } catch {
-      // ignore quota / private mode errors — inventory just won't persist
-    }
+  private notify() {
+    for (const cb of this.listeners) cb();
   }
 }

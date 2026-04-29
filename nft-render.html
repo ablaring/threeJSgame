@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>NFT weapon renderer</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'three';
+      import { buildAK47 } from '/src/entities/AK47.ts';
+      import { buildRocketLauncher } from '/src/entities/RocketLauncher.ts';
+      import { buildPistol } from '/src/entities/Pistol.ts';
+
+      const params = new URLSearchParams(location.search);
+      const weaponId = params.get('weapon') || 'ak47';
+      const size = parseInt(params.get('size') || '1024', 10);
+
+      // Square viewport, transparent BG so we can use the PNG over any UI.
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(size, size);
+      renderer.setClearColor(0x000000, 0);
+      document.body.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+
+      // Soft studio lighting
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      const key = new THREE.DirectionalLight(0xffffff, 1.4);
+      key.position.set(2, 3, 4);
+      scene.add(key);
+      const fill = new THREE.DirectionalLight(0xaecfff, 0.7);
+      fill.position.set(-3, 1, 2);
+      scene.add(fill);
+      const rim = new THREE.DirectionalLight(0xffd9a8, 0.6);
+      rim.position.set(0, 2, -3);
+      scene.add(rim);
+
+      // Build the requested weapon
+      let parts;
+      if (weaponId === 'ak47') parts = buildAK47();
+      else if (weaponId === 'rocket-launcher') parts = buildRocketLauncher();
+      else if (weaponId === 'pistol') parts = buildPistol();
+      else throw new Error('Unknown weapon: ' + weaponId);
+
+      const root = new THREE.Group();
+      root.add(parts.group);
+
+      // Center the weapon by computing its bounding box and re-centering.
+      const box = new THREE.Box3().setFromObject(parts.group);
+      const center = box.getCenter(new THREE.Vector3());
+      parts.group.position.sub(center);
+
+      // Tilt for a flattering 3/4 view.
+      root.rotation.y = -Math.PI / 4;
+      root.rotation.x = Math.PI / 12;
+      scene.add(root);
+
+      // Frame the camera around the bounding sphere of the rotated weapon so
+      // it fills ~95% of the canvas regardless of orientation.
+      const rotatedBox = new THREE.Box3().setFromObject(root);
+      const radius = rotatedBox.getBoundingSphere(new THREE.Sphere()).radius;
+      const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 20);
+      const halfFov = (camera.fov * Math.PI) / 180 / 2;
+      const fitMargin = 1.15; // higher = tighter frame (weapon fills more of canvas)
+      const distance = (radius / Math.tan(halfFov)) / fitMargin;
+      camera.position.set(distance * 0.55, distance * 0.32, distance);
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+
+      // Expose for puppeteer to confirm readiness and grab the canvas data
+      window.__NFT_RENDER_READY__ = true;
+      window.__NFT_CANVAS__ = renderer.domElement;
+    </script>
+  </body>
+</html>
